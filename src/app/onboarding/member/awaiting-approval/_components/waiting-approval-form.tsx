@@ -9,7 +9,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 
-export default function WaitingPage() {
+export default function WaitingApprovalPage() {
   const handleCheckStatus = () => {
     console.log("Verificando se o gerente já aprovou...");
     // Aqui você pode recarregar a sessão ou revalidar os dados do banco
