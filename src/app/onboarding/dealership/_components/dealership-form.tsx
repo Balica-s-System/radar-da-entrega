@@ -131,7 +131,7 @@ export default function DealershipForm() {
                   <h6 className="text-primary text-sm font-medium">
                     Logotipo da Empresa
                   </h6>
-                  <p className="text-xs text-muted-foreground font-normal max-w-[220px] leading-relaxed">
+                  <p className="text-xs text-muted-foreground font-normal max-w-55 leading-relaxed">
                     Insira uma imagem quadrada (PNG ou JPG) para identificar sua
                     frota no sistema.
                   </p>
