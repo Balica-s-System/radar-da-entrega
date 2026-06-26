@@ -1,111 +1,143 @@
 "use client";
 
-import { GalleryVerticalEnd, Map, Radar, Settings2 } from "lucide-react";
+import {
+  ClipboardList,
+  CreditCard,
+  Gauge,
+  History,
+  PieChart,
+  Radar,
+  Settings,
+  Table,
+  Users,
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import type * as React from "react";
-
+import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
-  SidebarRail,
+  SidebarMenu,
+  SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { NavMain } from "./nav-main";
-import { NavUser } from "./nav-user";
-import { TeamSwitcher } from "./team-switcher";
+import Logo from "./logo";
+import { type NavItem, NavMain } from "./nav-main";
+import { Button } from "./ui/button";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const params = useParams();
   const dealershipId = params.dealershipId as string;
 
-  const data = {
-    user: {
-      name: "shadcn",
-      email: "m@example.com",
-      avatar: "/avatars/shadcn.jpg",
+  const navData: NavItem[] = [
+    // Dashboards Section
+    { label: "Dashboards", isSection: true },
+    {
+      title: "Analytics",
+      icon: PieChart,
+      href: `/app/${dealershipId}/dashboard`,
     },
-    teams: [
-      {
-        name: "Acme Inc",
-        logo: GalleryVerticalEnd,
-        plan: "Enterprise",
-      },
-    ],
-    navMain: [
-      {
-        title: "Radar",
-        url: `/app/${dealershipId}/dashboard`,
-        icon: Radar,
-        isActive: true,
-        items: [
-          {
-            title: "Dashboard",
-            url: `/app/${dealershipId}/dashboard`,
-          },
-          {
-            title: "BDC",
-            url: `/app/${dealershipId}/bdc`,
-          },
-          {
-            title: "Estoque",
-            url: `/app/${dealershipId}/stock`,
-          },
-        ],
-      },
-      {
-        title: "Rastreamento",
-        url: "#",
-        icon: Map,
-        items: [
-          {
-            title: "Jornada da Entrega (Pública)",
-            url: `/${dealershipId}/tracking`,
-          },
-          {
-            title: "Histórico de Envios",
-            url: `/app/${dealershipId}/tracking/history`,
-          },
-        ],
-      },
-      {
-        title: "Configurações",
-        url: "#",
-        icon: Settings2,
-        items: [
-          {
-            title: "Geral",
-            url: `/app/${dealershipId}/settings/general`,
-          },
-          {
-            title: "Time",
-            url: `/app/${dealershipId}/settings/team`,
-          },
-          {
-            title: "Billing",
-            url: `/app/${dealershipId}/settings/billing`,
-          },
-          {
-            title: "Limites",
-            url: `/app/${dealershipId}/settings/limits`,
-          },
-        ],
-      },
-    ],
-  };
+    { title: "CRM Dashboard", icon: ClipboardList, href: "#" },
+
+    // Pages Section
+    { label: "Radar", isSection: true },
+    { title: "BDC", icon: Table, href: `/app/${dealershipId}/bdc` },
+    {
+      title: "Estoque",
+      icon: ClipboardList,
+      href: `/app/${dealershipId}/stock`,
+    },
+
+    // Rastreamento Section
+    { label: "Rastreamento", isSection: true },
+    {
+      title: "Jornada da Entrega",
+      icon: Radar,
+      href: `/${dealershipId}/tracking`,
+    },
+    {
+      title: "Histórico de Envios",
+      icon: History,
+      href: `/app/${dealershipId}/tracking/history`,
+    },
+
+    // Settings Section
+    {
+      label: "Configurações",
+      isSection: true,
+    },
+    {
+      title: "Geral",
+      icon: Settings,
+      href: `/app/${dealershipId}/settings/general`,
+    },
+    {
+      title: "Time",
+      icon: Users,
+      href: `/app/${dealershipId}/settings/team`,
+    },
+    {
+      title: "Billing",
+      icon: CreditCard,
+      href: `/app/${dealershipId}/settings/billing`,
+    },
+    {
+      title: "Limites",
+      icon: Gauge,
+      href: `/app/${dealershipId}/settings/limits`,
+    },
+  ];
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} />
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
-      </SidebarFooter>
-      <SidebarRail />
+    <Sidebar className="px-0 h-full **:data-[slot=sidebar-inner]:h-full">
+      <div className="flex flex-col gap-6">
+        <SidebarHeader className="px-4">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <Link href="#" className="w-full h-full">
+                <Logo />
+              </Link>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+
+        <SidebarContent className="overflow-hidden">
+          <ScrollArea className="h-[calc(100vh-100px)]">
+            <div className="px-4">
+              <NavMain items={navData} />
+            </div>
+            {/* card */}
+            <div className="pt-5 px-4">
+              <Card className="shadow-none ring-0 bg-secondary px-4 py-6">
+                <CardContent className="p-0 flex flex-col gap-3 items-center">
+                  <Image
+                    src="https://images.shadcnspace.com/assets/backgrounds/download-img.png"
+                    alt="sidebar-img"
+                    width={74}
+                    height={74}
+                    className="h-20 w-20"
+                  />
+                  <div className="flex flex-col gap-4 items-center">
+                    <div>
+                      <p className="text-base font-semibold text-card-foreground text-center">
+                        Grab Pro Now
+                      </p>
+                      <p className="text-sm font-regular text-muted-foreground text-center">
+                        Customize your admin
+                      </p>
+                    </div>
+                    <Button className="w-fit h-9 px-4 py-2 shadow-none cursor-pointer rounded-xl">
+                      Get Premium
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </ScrollArea>
+        </SidebarContent>
+      </div>
     </Sidebar>
   );
 }
