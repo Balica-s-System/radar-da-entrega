@@ -69,7 +69,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
       },
       {
-        title: "Configuração",
+        title: "Configurações",
         url: "#",
         icon: Settings2,
         items: [
