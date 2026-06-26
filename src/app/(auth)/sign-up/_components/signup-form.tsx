@@ -71,15 +71,15 @@ export function SignUpForm({
             <div className="flex flex-col flex-1 justify-between gap-y-6">
               <div className="flex flex-col gap-y-3 justify-center">
                 <SocialButtonLogin
-                  label="Sign in with Google"
+                  label="Sign up with Google"
                   src="/icons/google-svg.svg"
                 />
                 <SocialButtonLogin
-                  label="Sign in with Linkeding"
+                  label="Sign up with Linkeding"
                   src="/icons/linkeding-svg.svg"
                 />
                 <SocialButtonLogin
-                  label="Sign in with Apple"
+                  label="Sign up with Apple"
                   src="/icons/apple-icon.svg"
                 />
               </div>
