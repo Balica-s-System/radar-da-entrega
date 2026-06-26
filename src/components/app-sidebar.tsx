@@ -1,7 +1,7 @@
 "use client";
 
-import { GalleryVerticalEnd, Radar, Settings2 } from "lucide-react";
-import { useParams } from "next/navigation"; // Hook para capturar parâmetros da URL
+import { GalleryVerticalEnd, Map, Radar, Settings2 } from "lucide-react";
+import { useParams } from "next/navigation";
 import type * as React from "react";
 
 import {
@@ -54,10 +54,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
       },
       {
+        title: "Rastreamento",
+        url: "#",
+        icon: Map,
+        items: [
+          {
+            title: "Jornada da Entrega (Pública)",
+            url: `/${dealershipId}/tracking`,
+          },
+          {
+            title: "Histórico de Envios",
+            url: `/app/${dealershipId}/tracking/history`,
+          },
+        ],
+      },
+      {
         title: "Configuração",
         url: "#",
         icon: Settings2,
-        isActive: true,
         items: [
           {
             title: "Geral",
