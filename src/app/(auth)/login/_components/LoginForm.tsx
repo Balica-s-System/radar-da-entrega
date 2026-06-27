@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
-export function SignInForm({
+export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
@@ -28,7 +28,7 @@ export function SignInForm({
     startGooglePending(async () => {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/",
+        callbackURL: "/onboarding",
         fetchOptions: {
           onSuccess: () => {
             toast.success("Signed in with Google, you will be redirected...");
@@ -55,7 +55,7 @@ export function SignInForm({
         fetchOptions: {
           onSuccess: () => {
             toast.success("Email sent");
-            router.push(`/verify-request?email=${email}`);
+            router.push(`/verify-request?email=${encodeURIComponent(email)}`);
           },
           onError: () => {
             toast.error("Error sending email");
@@ -68,15 +68,15 @@ export function SignInForm({
   return (
     <div
       className={cn(
-        "flex flex-col gap-6 w-full max-w-md mx-auto text-foreground",
+        "flex flex-col items-center justify-center min-h-screen w-full max-w-md mx-auto text-foreground px-4",
         className,
       )}
       {...props}
     >
-      <form>
+      <form className="w-full">
         <Field>
-          <FieldDescription className="flex flex-col gap-y-6 mb-8 text-center lg:text-left">
-            <Logo className="mx-auto lg:mx-0" />
+          <FieldDescription className="flex flex-col items-center gap-y-4 mb-8 text-center">
+            <Logo />
             <h2 className="text-4xl font-semibold tracking-tight text-card-foreground">
               Sign In.
             </h2>
@@ -84,7 +84,6 @@ export function SignInForm({
 
           <div className="flex flex-col gap-y-4">
             <FieldGroup className="flex flex-col gap-y-4">
-              {/* Input de Email */}
               <Input
                 type="email"
                 placeholder="name@example.com"
@@ -94,7 +93,6 @@ export function SignInForm({
                 required
               />
 
-              {/* Botão de Email */}
               <Button
                 type="button"
                 onClick={signInWithEmail}
@@ -114,15 +112,15 @@ export function SignInForm({
                 )}
               </Button>
 
-              {/* Divisor "ou" com linhas laterais */}
               <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-border"></div>
-                <span className="flex-shrink mx-4 text-xs uppercase text-muted-foreground tracking-wider">
+                <div className="grow border-t border-border"></div>
+                <span className="shrink mx-4 text-xs uppercase text-muted-foreground tracking-wider">
                   ou
                 </span>
-                <div className="flex-grow border-t border-border"></div>
+                <div className="grow border-t border-border"></div>
               </div>
 
+              {/* Google */}
               <Button
                 type="button"
                 onClick={signInWithGoogle}
@@ -148,6 +146,7 @@ export function SignInForm({
                 )}
               </Button>
 
+              {/* LinkedIn */}
               <Button
                 type="button"
                 onClick={signInWithGoogle}
@@ -163,16 +162,17 @@ export function SignInForm({
                 ) : (
                   <>
                     <Image
-                      src="/icons/linkeding-svg.svg"
-                      alt="Sign in with Linkeding"
+                      src="/icons/linkedin-svg.svg"
+                      alt="Sign in with LinkedIn"
                       width={20}
                       height={20}
                     />
-                    <span>Sign in with Linkeding</span>
+                    <span>Sign in with LinkedIn</span>
                   </>
                 )}
               </Button>
 
+              {/* Apple */}
               <Button
                 type="button"
                 onClick={signInWithGoogle}
@@ -198,7 +198,6 @@ export function SignInForm({
                 )}
               </Button>
 
-              {/* Termos e Políticas */}
               <div className="text-center text-xs leading-relaxed text-muted-foreground mt-4">
                 By signing up, you agree to our{" "}
                 <Link

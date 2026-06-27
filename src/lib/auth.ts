@@ -87,4 +87,13 @@ export const auth = betterAuth({
     }),
     admin(),
   ],
+  user: {
+    additionalFields: {
+      onboardingCompleted: {
+        type: "boolean",
+        required: false,
+        defaultValue: false,
+      },
+    },
+  },
 });
