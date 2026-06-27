@@ -1,8 +1,10 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { admin, emailOTP } from "better-auth/plugins";
+import { emailOTP, organization } from "better-auth/plugins";
 import { prisma } from "./db";
+import { ac, admin, member, owner } from "./permissions";
 import { resend } from "./resend";
+import { env } from "./env";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -85,7 +87,71 @@ export const auth = betterAuth({
         });
       },
     }),
-    admin(),
+    organization({
+      ac,
+      roles: {
+        owner,
+        admin,
+        member,
+      },
+      schema: {
+        organization: {
+          additionalFields: {
+            cnpj: { type: "string", required: true },
+            city: { type: "string", required: true },
+          },
+        },
+      },
+      async sendInvitationEmail(data) {
+        const inviteLink = `${env.BETTER_AUTH_URL}/accept-invitation/${data.id}`;
+
+        try {
+          await resend.emails.send({
+            from: "Radar da Entrega <onboarding@resend.dev>",
+            to: [data.email],
+            subject: `Você foi convidado para ${data.organization.name} - Radar da Entrega`,
+            html: `
+              <!DOCTYPE html>
+              <html lang="pt-BR">
+              <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+              <body style="margin:0;padding:0;background-color:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f4f5f7;padding:40px 20px">
+                  <tr><td align="center">
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:500px;background-color:#ffffff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.05);overflow:hidden">
+                      <tr><td style="background-color:#0f172a;padding:32px 24px;text-align:center">
+                        <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700">📦 Radar da Entrega</h1>
+                      </td></tr>
+                      <tr><td style="padding:40px 32px;text-align:center">
+                        <h2 style="margin:0 0 16px 0;color:#1e293b;font-size:20px;font-weight:600">Convite para equipe</h2>
+                        <p style="margin:0 0 8px 0;color:#64748b;font-size:15px;line-height:24px">
+                          <strong style="color:#0f172a">${data.inviter.user.name}</strong> (<span style="color:#6366f1">${data.inviter.user.email}</span>)
+                          convidou você para fazer parte da organização
+                          <strong style="color:#0f172a">${data.organization.name}</strong>.
+                        </p>
+                        <p style="margin:0 0 32px 0;color:#64748b;font-size:15px;line-height:24px">
+                          Clique no botão abaixo para aceitar o convite e começar a usar o Radar da Entrega.
+                        </p>
+                        <a href="${inviteLink}" style="display:inline-block;background-color:#0f172a;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px">
+                          Aceitar Convite
+                        </a>
+                      </td></tr>
+                      <tr><td style="padding:0 32px 32px 32px;text-align:center;border-top:1px solid #f1f5f9">
+                        <p style="margin:24px 0 0 0;color:#94a3b8;font-size:12px">
+                          Se você não esperava este convite, ignore este e-mail.
+                        </p>
+                      </td></tr>
+                    </table>
+                  </td></tr>
+                </table>
+              </body>
+              </html>
+            `,
+          });
+        } catch (error) {
+          console.error("Failed to send invitation email:", error);
+        }
+      },
+    }),
   ],
   user: {
     additionalFields: {

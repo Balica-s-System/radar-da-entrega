@@ -1,6 +1,11 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Building2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMemo, useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,143 +15,176 @@ import {
 } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { tryCatch } from "@/lib/try-catch";
+import {
+  type OrganizationSchemaType,
+  organizationSchema,
+} from "@/lib/zodSchemas/organization";
+import { CreateOrganization } from "../actions";
 
 export default function DealershipForm() {
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Organização cadastrada!");
-  };
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  const form = useForm<OrganizationSchemaType>({
+    resolver: zodResolver(organizationSchema),
+  });
+
+  const name = form.watch("name");
+  const cnpj = form.watch("cnpj");
+  const city = form.watch("city");
+
+  const currentSlug = useMemo(() => {
+    return (name ?? "")
+      .toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/[\s_-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }, [name]);
+
+  async function onSubmit(values: OrganizationSchemaType) {
+    startTransition(async () => {
+      const { data: result, error } = await tryCatch(
+        CreateOrganization(values),
+      );
+
+      if (error) {
+        toast.error("Ocorreu um erro inesperado.");
+        return;
+      }
+
+      if (result.status === "success") {
+        toast.success(result.message);
+        form.reset();
+        const slug = result.slug || currentSlug;
+        router.push(`/app/${slug}/dashboard`);
+        return;
+      }
+
+      toast.error(result.message);
+    });
+  }
 
   return (
-    <div className="max-w-4xl w-full mx-auto px-4">
-      <Card className="p-0 w-full gap-0 shadow-lg">
-        <CardHeader className="gap-6 px-6 pt-5 border-b border-border pb-4">
-          <h2 className="text-base font-medium text-card-foreground">
-            Cadastrar Nova Organização
-          </h2>
+    <div className="mx-auto w-full max-w-4xl px-4">
+      <Card className="gap-0 p-0 shadow-lg">
+        <CardHeader className="gap-2 border-b px-6 pt-5 pb-4">
+          <h2 className="text-base font-medium">Cadastrar Nova Organização</h2>
+
+          <p className="text-sm text-muted-foreground">
+            Informe os dados da sua empresa para concluir o cadastro.
+          </p>
         </CardHeader>
 
-        <CardContent className="py-6 px-6">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12">
-            {/* Coluna da Esquerda: Formulário Principal */}
-            <div className="md:col-span-7 flex flex-col justify-between">
-              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                <div className="flex flex-col gap-4">
-                  <Field className="gap-1.5">
-                    <FieldLabel
-                      htmlFor="name"
-                      className="text-sm text-muted-foreground font-normal"
-                    >
-                      Nome da Concessionária / Empresa
-                    </FieldLabel>
-                    <Input
-                      id="name"
-                      type="text"
-                      placeholder="Ex: Concessionária Central"
-                      required
-                      className="dark:bg-background h-9 text-sm shadow-xs text-muted-foreground font-normal"
-                    />
-                  </Field>
+        <CardContent className="px-6 py-6">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-12 lg:gap-12">
+            {/* Formulário */}
+            <div className="md:col-span-7">
+              <form
+                id="organization-form"
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-5"
+              >
+                <Field className="gap-1.5">
+                  <FieldLabel htmlFor="name">Nome da Organização</FieldLabel>
 
-                  <Field className="gap-1.5">
-                    <FieldLabel
-                      htmlFor="document"
-                      className="text-sm text-muted-foreground font-normal"
-                    >
-                      CNPJ
-                    </FieldLabel>
-                    <Input
-                      id="document"
-                      type="text"
-                      placeholder="00.000.000/0001-00"
-                      required
-                      className="dark:bg-background h-9 text-sm shadow-xs text-muted-foreground font-normal"
-                    />
-                  </Field>
+                  <Input
+                    id="name"
+                    placeholder="Concessionária Central"
+                    {...form.register("name")}
+                  />
 
-                  <Field className="gap-1.5">
-                    <FieldLabel
-                      htmlFor="city"
-                      className="text-sm text-muted-foreground font-normal"
-                    >
-                      Cidade / UF
-                    </FieldLabel>
+                  {form.formState.errors.name && (
+                    <p className="text-xs text-destructive">
+                      {form.formState.errors.name.message}
+                    </p>
+                  )}
+                </Field>
+
+                <Field className="gap-1.5">
+                  <FieldLabel htmlFor="cnpj">CNPJ</FieldLabel>
+
+                  <Input
+                    id="cnpj"
+                    placeholder="00.000.000/0001-00"
+                    {...form.register("cnpj")}
+                  />
+
+                  {form.formState.errors.cnpj && (
+                    <p className="text-xs text-destructive">
+                      {form.formState.errors.cnpj.message}
+                    </p>
+                  )}
+                </Field>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <Field className="col-span-2 gap-1.5">
+                    <FieldLabel htmlFor="city">Cidade</FieldLabel>
+
                     <Input
                       id="city"
-                      type="text"
-                      placeholder="Ex: São Paulo - SP"
-                      required
-                      className="dark:bg-background h-9 shadow-xs text-sm text-muted-foreground font-normal"
+                      placeholder="Sobral"
+                      {...form.register("city")}
                     />
+
+                    {form.formState.errors.city && (
+                      <p className="text-xs text-destructive">
+                        {form.formState.errors.city.message}
+                      </p>
+                    )}
                   </Field>
                 </div>
 
-                {/* Seção de Toggles */}
-                <div className="flex flex-col gap-5 border-t border-border pt-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex flex-col gap-1">
-                      <Label
-                        htmlFor="multi-fleet"
-                        className="text-primary text-sm font-medium"
-                      >
-                        Gerenciar Múltiplas Frotas
-                      </Label>
-                      <p className="text-xs text-muted-foreground font-normal leading-relaxed">
-                        Permite segmentar veículos e motoristas por filiais ou
-                        setores distintos.
-                      </p>
-                    </div>
-                    <Switch id="multi-fleet" className="mt-0.5" />
-                  </div>
+                <Field className="gap-1.5">
+                  <FieldLabel>URL da Organização</FieldLabel>
 
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex flex-col gap-1">
-                      <Label
-                        htmlFor="notifications"
-                        className="text-primary text-sm font-medium"
-                      >
-                        Alertas em Tempo Real
-                      </Label>
-                      <p className="text-xs text-muted-foreground font-normal leading-relaxed">
-                        Notificar os administradores do Radar sobre atrasos
-                        automaticamente.
-                      </p>
-                    </div>
-                    <Switch
-                      id="notifications"
-                      defaultChecked
-                      className="mt-0.5"
-                    />
-                  </div>
-                </div>
+                  <Input
+                    disabled
+                    value={`radardaentrega.com.br/${currentSlug || "seu-slug"}`}
+                    className="bg-muted"
+                  />
+                </Field>
+
+                <Field className="gap-1.5">
+                  <FieldLabel htmlFor="logoUrl">Logo (opcional)</FieldLabel>
+
+                  <Input
+                    id="logoUrl"
+                    placeholder="https://..."
+                    {...form.register("logoUrl")}
+                  />
+
+                  {form.formState.errors.logoUrl && (
+                    <p className="text-xs text-destructive">
+                      {form.formState.errors.logoUrl.message}
+                    </p>
+                  )}
+                </Field>
               </form>
             </div>
 
-            {/* Coluna da Direita: Identidade Visual da Organização */}
-            <div className="md:col-span-5 flex flex-col justify-center items-center border-t md:border-t-0 md:border-s border-border pt-6 md:pt-0 md:ps-6 lg:ps-8">
-              <div className="flex flex-col gap-6 items-center text-center">
-                <div className="flex flex-col gap-1">
-                  <h6 className="text-primary text-sm font-medium">
-                    Logotipo da Empresa
-                  </h6>
-                  <p className="text-xs text-muted-foreground font-normal max-w-55 leading-relaxed">
-                    Insira uma imagem quadrada (PNG ou JPG) para identificar sua
-                    frota no sistema.
-                  </p>
-                </div>
-
-                <div className="w-28 h-28 rounded-xl bg-accent border border-border flex items-center justify-center text-muted-foreground shadow-inner">
+            {/* Preview */}
+            <div className="flex flex-col items-center justify-center border-t pt-6 md:col-span-5 md:border-t-0 md:border-l md:pt-0 md:pl-8">
+              <div className="flex flex-col items-center gap-6 text-center">
+                <div className="flex h-28 w-28 items-center justify-center rounded-xl border bg-accent">
                   <Building2 className="size-10 text-muted-foreground/60" />
                 </div>
 
-                <div className="flex flex-col items-center">
-                  <h5 className="text-primary text-base font-medium">
-                    Radar da Entrega
+                <div className="space-y-2">
+                  <h5 className="text-base font-semibold">
+                    {name || "Radar da Entrega"}
                   </h5>
-                  <p className="text-xs text-muted-foreground font-normal">
-                    Módulo de Gestão Corporativa
+
+                  {cnpj && (
+                    <p className="text-xs text-muted-foreground">CNPJ {cnpj}</p>
+                  )}
+
+                  <p className="text-xs text-muted-foreground">
+                    radardaentrega.com.br/
+                    {currentSlug || "seu-slug"}
                   </p>
                 </div>
               </div>
@@ -154,18 +192,18 @@ export default function DealershipForm() {
           </div>
         </CardContent>
 
-        <CardFooter className="[.border-t]:pt-5 py-5 px-6 border-t border-border flex sm:flex-row flex-col justify-end sm:items-center items-start gap-3 bg-card rounded-b-xl">
-          <Button
-            variant="outline"
-            className="rounded-lg cursor-pointer h-9 shadow-xs w-full sm:w-auto"
-          >
+        <CardFooter className="flex flex-col items-stretch justify-end gap-3 border-t px-6 py-5 sm:flex-row sm:items-center">
+          <Button type="button" variant="outline" className="w-full sm:w-auto">
             Cancelar
           </Button>
+
           <Button
-            onClick={handleSubmit}
-            className="rounded-lg cursor-pointer h-9 hover:bg-primary/80 w-full sm:w-auto"
+            form="organization-form"
+            type="submit"
+            disabled={isPending}
+            className="w-full sm:w-auto"
           >
-            Criar Organização
+            {isPending ? "Criando..." : "Criar Organização"}
           </Button>
         </CardFooter>
       </Card>

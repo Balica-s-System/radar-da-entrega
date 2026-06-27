@@ -13,7 +13,15 @@ export default async function OnboardingPage() {
   }
 
   if (session.user.onboardingCompleted) {
-    redirect("/");
+    const organizations = await auth.api.listOrganizations({
+      headers: await headers(),
+    });
+
+    if (organizations && organizations.length > 0) {
+      redirect(`/app/${organizations[0].slug}/dashboard`);
+    }
+
+    redirect("/onboarding/member/awaiting-approval");
   }
 
   return <OnboardingForm />;

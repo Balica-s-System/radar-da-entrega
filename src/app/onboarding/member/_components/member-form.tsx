@@ -1,6 +1,11 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,12 +16,41 @@ import {
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { tryCatch } from "@/lib/try-catch";
+import {
+  type MemberSchemaType,
+  memberSchema,
+} from "@/lib/zodSchemas/member";
+import { SubmitJoinRequest } from "../actions";
 
 export default function MemberForm() {
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Foto salva e convite enviado ao gerente!");
-  };
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  const form = useForm<MemberSchemaType>({
+    resolver: zodResolver(memberSchema),
+  });
+
+  async function onSubmit(values: MemberSchemaType) {
+    startTransition(async () => {
+      const { data: result, error } = await tryCatch(
+        SubmitJoinRequest(values),
+      );
+
+      if (error) {
+        toast.error("Ocorreu um erro inesperado.");
+        return;
+      }
+
+      if (result.status === "success") {
+        toast.success(result.message);
+        router.push("/onboarding/member/awaiting-approval");
+        return;
+      }
+
+      toast.error(result.message);
+    });
+  }
 
   return (
     <div className="max-w-xl w-full mx-auto px-4">
@@ -45,8 +79,11 @@ export default function MemberForm() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            {/* Vinculação da Concessionária */}
+          <form
+            id="member-form"
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-6"
+          >
             <Field className="gap-1.5">
               <FieldLabel
                 htmlFor="managerEmail"
@@ -58,9 +95,14 @@ export default function MemberForm() {
                 id="managerEmail"
                 type="email"
                 placeholder="gerente@concessionaria.com"
-                required
+                {...form.register("managerEmail")}
                 className="dark:bg-background h-9 shadow-xs text-sm text-muted-foreground font-normal"
               />
+              {form.formState.errors.managerEmail && (
+                <p className="text-xs text-destructive">
+                  {form.formState.errors.managerEmail.message}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground font-normal leading-normal mt-0.5">
                 Insira o e-mail do responsável para que ele possa aprovar seu
                 vínculo com a organização.
@@ -72,15 +114,18 @@ export default function MemberForm() {
         <CardFooter className="[.border-t]:pt-5 py-5 px-6 border-t border-border flex sm:flex-row flex-col justify-end sm:items-center items-start gap-3 bg-card rounded-b-xl">
           <Button
             variant="outline"
+            type="button"
             className="rounded-lg cursor-pointer h-9 shadow-xs w-full sm:w-auto"
           >
             Cancelar
           </Button>
           <Button
-            onClick={handleSubmit}
+            form="member-form"
+            type="submit"
+            disabled={isPending}
             className="rounded-lg cursor-pointer h-9 hover:bg-primary/80 w-full sm:w-auto"
           >
-            Vincular e Concluir
+            {isPending ? "Enviando..." : "Vincular e Concluir"}
           </Button>
         </CardFooter>
       </Card>

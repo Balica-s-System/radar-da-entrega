@@ -13,7 +13,6 @@ export default async function AppLayout({
 
   if (!session) redirect("/login");
 
-  // Garante que ninguém acesse a home "pela barra de endereço" sem concluir o onboarding
   if (!session.user.onboardingCompleted) {
     redirect("/onboarding");
   }

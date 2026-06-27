@@ -18,6 +18,11 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter();
+  const searchParams =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : null;
+  const callbackURL = searchParams?.get("callbackURL") || "/onboarding";
 
   const [googlePending, startGooglePending] = useTransition();
   const [emailPending, startEmailTransition] = useTransition();
@@ -28,7 +33,7 @@ export function LoginForm({
     startGooglePending(async () => {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/onboarding",
+        callbackURL,
         fetchOptions: {
           onSuccess: () => {
             toast.success("Signed in with Google, you will be redirected...");
@@ -54,8 +59,11 @@ export function LoginForm({
         type: "sign-in",
         fetchOptions: {
           onSuccess: () => {
+            const redirectTo = callbackURL !== "/onboarding" ? callbackURL : undefined;
             toast.success("Email sent");
-            router.push(`/verify-request?email=${encodeURIComponent(email)}`);
+            router.push(
+              `/verify-request?email=${encodeURIComponent(email)}${redirectTo ? `&callbackURL=${encodeURIComponent(redirectTo)}` : ""}`,
+            );
           },
           onError: () => {
             toast.error("Error sending email");

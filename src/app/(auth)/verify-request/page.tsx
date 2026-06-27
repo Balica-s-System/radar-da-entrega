@@ -34,6 +34,7 @@ function VerifyRequest() {
   const [emailPending, setEmailTransition] = useTransition();
   const params = useSearchParams();
   const email = params.get("email") as string;
+  const callbackURL = params.get("callbackURL") || "/onboarding";
   const isOtpCompleted = otp.length === 6;
 
   function verifyOtp() {
@@ -44,7 +45,7 @@ function VerifyRequest() {
         fetchOptions: {
           onSuccess: () => {
             toast.success("Email verified");
-            router.push("/onboarding");
+            router.push(callbackURL);
           },
           onError: () => {
             toast.error("Error verifying Email/OTP");

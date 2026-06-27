@@ -1,16 +1,18 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js" // Corrigido para o provider padrão do Prisma client
   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
+
+// =====================================================================
+// AUTENTICAÇÃO CORE & USUÁRIOS (MANTIDO E EXPANDIDO)
+// =====================================================================
 
 model User {
   id                  String    @id
@@ -28,21 +30,26 @@ model User {
   accounts            Account[]
   onboardingCompleted Boolean   @default(false)
 
+  // Relação multi-tenant adicionada
+  members    Member[]
+  invitations Invitation[]
+
   @@unique([email])
   @@map("user")
 }
 
 model Session {
-  id             String   @id
-  expiresAt      DateTime
-  token          String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  ipAddress      String?
-  userAgent      String?
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  impersonatedBy String?
+  id                   String   @id
+  expiresAt            DateTime
+  token                String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  ipAddress            String?
+  userAgent            String?
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedBy       String?
+  activeOrganizationId String?
 
   @@unique([token])
   @@index([userId])
@@ -79,4 +86,151 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+// =====================================================================
+// TABELAS NATIVAS DO MÓDULO ORGANIZATIONS (BETTER-AUTH)
+// =====================================================================
+
+model Organization {
+  id        String   @id
+  name      String
+  slug      String   @unique
+  logo      String?
+  createdAt DateTime @default(now())
+  metadata  String? // Opcional para dados extras genéricos do better-auth
+
+  // Campos específicos do Radar da Entrega requisitados por você:
+  cnpj String @unique
+  city String
+
+  // Relacionamentos com membros e regras de negócio:
+  members     Member[]
+  invitations Invitation[]
+  clients     Client[]
+  motorcycles Motorcycle[]
+  settings    Setting[]
+
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id
+  role           String // Guardará nativamente: "admin", "manager" ou "user"
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("member")
+}
+
+// =====================================================================
+// ENTIDADES DE NEGÓCIO ISOLADAS POR ORGANIZAÇÃO (CONCESSIONÁRIA)
+// =====================================================================
+
+model Client {
+  id             String       @id @default(uuid())
+  organizationId String // Amarra o cliente à Concessionária ativa
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name             String
+  sellerName       String
+  city             String
+  billingDate      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  cpf              String // Removido o @unique global para não travar concessionárias diferentes
+  deliveryForecast DateTime?
+  motorcycles      Motorcycle[]
+
+  // Garante que o CPF não se repita dentro da MESMA concessionária
+  @@unique([organizationId, cpf])
+  // Índices compostos otimizados para queries com filtro de Tenant
+  @@index([organizationId, sellerName])
+  @@index([organizationId, city])
+  @@index([organizationId, createdAt])
+  @@map("client")
+}
+
+model Motorcycle {
+  id             String       @id @default(uuid())
+  organizationId String // Amarra a moto à Concessionária ativa
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  chassis                String             @unique // Mantido único global (chassis é um registro nacional)
+  model                  String
+  forecastDate           DateTime?
+  registrationStatus     RegistrationStatus @default(NO_PLATE)
+  registrationStatusDate DateTime?
+  clientId               String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  client                 Client?            @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, updatedAt])
+  @@map("motorcycle")
+}
+
+// =====================================================================
+// CONVITES NATIVOS DO BETTER-AUTH (ORGANIZATION PLUGIN)
+// =====================================================================
+
+model Invitation {
+  id              String       @id
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email           String
+  role            String
+  status          String       @default("pending")
+  inviterId       String
+  inviter         User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+  expiresAt       DateTime
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("invitation")
+}
+
+// =====================================================================
+// SOLICITAÇÕES DE ENTRADA (MEMBRO SOLICITA, ADMIN APROVA)
+// =====================================================================
+
+model JoinRequest {
+  id             String   @id @default(uuid())
+  userId         String
+  userEmail      String
+  managerEmail   String
+  organizationId String?
+  status         String   @default("pending") // pending | accepted | rejected
+  invitationId   String?  // ID do convite criado via Better Auth
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("join_request")
+}
+
+enum RegistrationStatus {
+  NO_PLATE
+  PLATING
+  PLATED
+}
+
+model Setting {
+  id             String       @id @default(uuid())
+  organizationId String // Permite configurações isoladas por concessionária
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+
+  // A mesma chave de configuração só não pode se repetir na mesma organização
+  @@unique([organizationId, key])
+  @@map("setting")
 }
