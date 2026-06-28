@@ -1,22 +1,60 @@
 "use server";
 
 import { headers } from "next/headers";
+import { z } from "zod/v3";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+
+const organizationSlugSchema = z.string().min(1).max(100);
+const requestIdSchema = z.string().min(1).max(100);
+
+async function getOrgBySlug(slug: string) {
+  const parsed = organizationSlugSchema.safeParse(slug);
+  if (!parsed.success) return null;
+
+  const org = await auth.api.getFullOrganization({
+    query: { organizationSlug: parsed.data },
+    headers: await headers(),
+  });
+
+  return org ?? null;
+}
+
+async function getOrgBySlugWithAdminCheck(slug: string, userId: string) {
+  const org = await getOrgBySlug(slug);
+  if (!org) return null;
+
+  const { members } = await auth.api.listMembers({
+    query: { organizationId: org.id },
+    headers: await headers(),
+  });
+
+  const callerMember = members?.find((m) => m.userId === userId);
+  if (!callerMember || !["owner", "admin"].includes(callerMember.role)) {
+    return null;
+  }
+
+  return org;
+}
+
+async function isMemberOfOrg(userId: string, orgId: string) {
+  const { members } = await auth.api.listMembers({
+    query: { organizationId: orgId },
+    headers: await headers(),
+  });
+
+  return members?.some((m) => m.userId === userId) ?? false;
+}
 
 export async function getPendingJoinRequests(organizationSlug: string) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return [];
 
-  const org = await auth.api.getFullOrganization({
-    query: { organizationSlug },
-    headers: await headers(),
-  });
-
+  const org = await getOrgBySlug(organizationSlug);
   if (!org) return [];
 
   const requests = await prisma.joinRequest.findMany({
-    where: { status: "pending" },
+    where: { status: "pending", organizationId: org.id },
     orderBy: { createdAt: "desc" },
   });
 
@@ -38,21 +76,26 @@ export async function acceptJoinRequest(
     return { status: "error", message: "Not authenticated" };
   }
 
+  const parsedRequestId = requestIdSchema.safeParse(requestId);
+  if (!parsedRequestId.success) {
+    return { status: "error", message: "Invalid request ID" };
+  }
+
   const request = await prisma.joinRequest.findUnique({
-    where: { id: requestId },
+    where: { id: parsedRequestId.data },
   });
 
   if (!request) {
     return { status: "error", message: "Request not found" };
   }
 
-  const org = await auth.api.getFullOrganization({
-    query: { organizationSlug },
-    headers: await headers(),
-  });
+  const org = await getOrgBySlugWithAdminCheck(
+    organizationSlug,
+    session.user.id,
+  );
 
   if (!org) {
-    return { status: "error", message: "Organization not found" };
+    return { status: "error", message: "Unauthorized" };
   }
 
   try {
@@ -66,7 +109,7 @@ export async function acceptJoinRequest(
     });
 
     await prisma.joinRequest.update({
-      where: { id: requestId },
+      where: { id: parsedRequestId.data },
       data: {
         status: "accepted",
         organizationId: org.id,
@@ -76,7 +119,8 @@ export async function acceptJoinRequest(
     return { status: "success", message: "Invitation sent successfully" };
   } catch (error) {
     console.error(error);
-    const message = error instanceof Error ? error.message : "Failed to send invitation";
+    const message =
+      error instanceof Error ? error.message : "Failed to send invitation";
     console.error("acceptJoinRequest error:", message);
     return { status: "error", message };
   }
@@ -88,9 +132,36 @@ export async function rejectJoinRequest(requestId: string) {
     return { status: "error", message: "Not authenticated" };
   }
 
+  const parsedRequestId = requestIdSchema.safeParse(requestId);
+  if (!parsedRequestId.success) {
+    return { status: "error", message: "Invalid request ID" };
+  }
+
+  const request = await prisma.joinRequest.findUnique({
+    where: { id: parsedRequestId.data },
+  });
+
+  if (!request) {
+    return { status: "error", message: "Request not found" };
+  }
+
+  if (!request.organizationId) {
+    return { status: "error", message: "Request has no associated organization" };
+  }
+
+  const { members } = await auth.api.listMembers({
+    query: { organizationId: request.organizationId },
+    headers: await headers(),
+  });
+
+  const callerMember = members?.find((m) => m.userId === session.user.id);
+  if (!callerMember || !["owner", "admin"].includes(callerMember.role)) {
+    return { status: "error", message: "Unauthorized" };
+  }
+
   try {
     await prisma.joinRequest.update({
-      where: { id: requestId },
+      where: { id: parsedRequestId.data },
       data: { status: "rejected" },
     });
 
@@ -105,12 +176,11 @@ export async function getActiveMembers(organizationSlug: string) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return [];
 
-  const org = await auth.api.getFullOrganization({
-    query: { organizationSlug },
-    headers: await headers(),
-  });
-
+  const org = await getOrgBySlug(organizationSlug);
   if (!org) return [];
+
+  const isMember = await isMemberOfOrg(session.user.id, org.id);
+  if (!isMember) return [];
 
   const members = await auth.api.listMembers({
     query: { organizationId: org.id },

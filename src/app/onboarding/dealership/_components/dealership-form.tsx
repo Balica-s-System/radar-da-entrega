@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { FileUpload } from "@/components/file-upload";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -149,12 +150,11 @@ export default function DealershipForm() {
                 </Field>
 
                 <Field className="gap-1.5">
-                  <FieldLabel htmlFor="logoUrl">Logo (opcional)</FieldLabel>
+                  <FieldLabel>Logo (opcional)</FieldLabel>
 
-                  <Input
-                    id="logoUrl"
-                    placeholder="https://..."
-                    {...form.register("logoUrl")}
+                  <FileUpload
+                    value={form.watch("logoUrl")}
+                    onChange={(url) => form.setValue("logoUrl", url)}
                   />
 
                   {form.formState.errors.logoUrl && (
@@ -169,8 +169,16 @@ export default function DealershipForm() {
             {/* Preview */}
             <div className="flex flex-col items-center justify-center border-t pt-6 md:col-span-5 md:border-t-0 md:border-l md:pt-0 md:pl-8">
               <div className="flex flex-col items-center gap-6 text-center">
-                <div className="flex h-28 w-28 items-center justify-center rounded-xl border bg-accent">
-                  <Building2 className="size-10 text-muted-foreground/60" />
+                <div className="flex h-28 w-28 items-center justify-center rounded-xl border bg-accent overflow-hidden">
+                  {form.watch("logoUrl") ? (
+                    <img
+                      src={form.watch("logoUrl")}
+                      alt="Logo"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Building2 className="size-10 text-muted-foreground/60" />
+                  )}
                 </div>
 
                 <div className="space-y-2">

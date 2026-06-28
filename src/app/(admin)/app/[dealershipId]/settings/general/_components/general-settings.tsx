@@ -1,8 +1,10 @@
 "use client";
 
-import { Store, Upload } from "lucide-react";
+import { Store } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
 import { ModeToggle } from "@/components/mode-toggle";
+import { FileUpload } from "@/components/file-upload";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,29 +17,42 @@ import {
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { updateOrganization } from "../actions";
 
-export function GeneralSettings() {
-  const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
+export function GeneralSettings({
+  organizationId,
+  organizationName: initialName,
+  organizationLogo: initialLogo,
+}: {
+  organizationId: string;
+  organizationName: string;
+  organizationLogo: string | null;
+}) {
+  const [name, setName] = React.useState(initialName);
+  const [logo, setLogo] = React.useState<string | null>(initialLogo);
+  const [saving, setSaving] = React.useState(false);
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSave = (e: React.FormEvent) => {
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    console.log("Configurações da concessionária salvas com sucesso!");
-  };
+    setSaving(true);
+
+    const result = await updateOrganization({
+      organizationId,
+      name,
+      logo,
+    });
+
+    if (result.status === "error") {
+      toast.error(result.message);
+    } else {
+      toast.success("Configurações salvas com sucesso!");
+    }
+
+    setSaving(false);
+  }
 
   return (
     <div className="max-w-3xl w-full mx-auto px-4 py-6 space-y-6">
-      {/* Seção de Preferências de Aparência (Tema) */}
       <Card className="p-0 shadow-sm border-muted/60">
         <CardHeader className="px-6 pt-5 pb-4 border-b border-border">
           <CardTitle className="text-base font-medium">
@@ -60,7 +75,6 @@ export function GeneralSettings() {
         </CardContent>
       </Card>
 
-      {/* Formulário de Identidade da Concessionária */}
       <Card className="p-0 shadow-sm border-muted/60">
         <CardHeader className="px-6 pt-5 pb-4 border-b border-border">
           <CardTitle className="text-base font-medium">
@@ -74,13 +88,12 @@ export function GeneralSettings() {
 
         <form onSubmit={handleSave}>
           <CardContent className="py-6 px-6 space-y-6">
-            {/* Upload de Logo */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
               <div className="w-24 h-24 shrink-0 rounded-xl bg-accent border border-border flex items-center justify-center text-muted-foreground overflow-hidden shadow-inner relative group">
-                {logoPreview ? (
+                {logo ? (
                   <img
-                    src={logoPreview}
-                    alt="Logo preview"
+                    src={logo}
+                    alt="Logo"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -88,30 +101,14 @@ export function GeneralSettings() {
                 )}
               </div>
 
-              <div className="flex flex-col gap-2 w-full max-w-md">
-                <FieldLabel
-                  htmlFor="logo-upload"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Logotipo da Empresa
-                </FieldLabel>
-                <div className="relative">
-                  <Input
-                    id="logo-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoChange}
-                    className="dark:bg-background text-xs shadow-xs text-muted-foreground font-normal file:mr-2 file:text-xs file:font-medium cursor-pointer"
-                  />
-                </div>
-                <p className="text-[11px] text-muted-foreground font-normal">
-                  Recomendado: PNG ou SVG quadrado de pelo menos 256x256px.
-                </p>
-              </div>
+              <FileUpload
+                value={logo}
+                onChange={(url) => setLogo(url)}
+                folder={`organizations/${organizationId}`}
+              />
             </div>
 
             <div className="grid gap-5 border-t border-border pt-6">
-              {/* Nome da Concessionária */}
               <Field className="gap-1.5">
                 <FieldLabel
                   htmlFor="dealershipName"
@@ -122,13 +119,14 @@ export function GeneralSettings() {
                 <Input
                   id="dealershipName"
                   type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: AutoVanguard Premium"
                   required
                   className="dark:bg-background h-9 text-sm shadow-xs text-muted-foreground font-normal"
                 />
               </Field>
 
-              {/* Descrição */}
               <Field className="gap-1.5">
                 <FieldLabel
                   htmlFor="dealershipDescription"
@@ -154,15 +152,17 @@ export function GeneralSettings() {
             <Button
               type="button"
               variant="outline"
+              disabled={saving}
               className="rounded-lg cursor-pointer h-9 shadow-xs w-full sm:w-auto text-sm"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
+              disabled={saving}
               className="rounded-lg cursor-pointer h-9 hover:bg-primary/80 w-full sm:w-auto text-sm"
             >
-              Salvar Alterações
+              {saving ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </CardFooter>
         </form>

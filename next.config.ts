@@ -5,7 +5,8 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   images: {
     remotePatterns: [
-    {  hostname: "images.shadcnspace.com"}
+      { hostname: "images.shadcnspace.com" },
+      { hostname: "res.cloudinary.com" },
     ]
   }
 };

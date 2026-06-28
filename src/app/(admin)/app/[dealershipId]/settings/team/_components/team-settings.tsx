@@ -75,7 +75,15 @@ export function TeamSettings({
     if (Array.isArray(result)) {
       setActiveMembers(result);
     } else if (result && "members" in result) {
-      setActiveMembers(result.members);
+      setActiveMembers(
+        result.members.map((m) => ({
+          id: m.id,
+          name: m.user?.name,
+          email: m.user?.email,
+          role: m.role,
+          createdAt: m.createdAt,
+        })),
+      );
     }
     setIsLoading(false);
   }, [organizationSlug]);

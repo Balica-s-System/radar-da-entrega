@@ -27,7 +27,14 @@ import Logo from "./logo";
 import { type NavItem, NavMain } from "./nav-main";
 import { Button } from "./ui/button";
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  organizationLogo,
+  organizationName,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & {
+  organizationLogo?: string | null;
+  organizationName?: string | null;
+}) {
   const params = useParams();
   const dealershipId = params.dealershipId as string;
 
@@ -97,7 +104,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenu>
             <SidebarMenuItem>
               <Link href="#" className="w-full h-full">
-                <Logo />
+                {organizationLogo ? (
+                  <Image
+                    src={organizationLogo}
+                    alt={organizationName ?? "Logo"}
+                    width={32}
+                    height={32}
+                    className="size-8 rounded-lg object-cover"
+                  />
+                ) : (
+                  <Logo />
+                )}
               </Link>
             </SidebarMenuItem>
           </SidebarMenu>
